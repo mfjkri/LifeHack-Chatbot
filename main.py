@@ -11,6 +11,7 @@ from bot import Bot
 from user import UserManager
 from utils import utils
 from utils.log import Log
+from stages.welcome import WelcomeStage
 
 
 LOG_FILE = os.path.join("logs", f"main.log")
@@ -48,14 +49,26 @@ def main():
              config=CONFIG)
 
     # Bot flow:
+    STAGE_WELCOME = "welcome"
     STAGE_END = "end"
+
+    # ------------------------------ Stage: welcome ------------------------------ #
+    welcome_stage: WelcomeStage = WelcomeStage(
+        stage_id=STAGE_WELCOME,
+        next_stage_id=STAGE_END,
+        bot=bot
+    )
+    welcome_stage.setup(
+        interval=5
+    )
+    bot.set_first_stage(STAGE_WELCOME)
+    # ---------------------------------------------------------------------------- #
 
     # -------------------------------- Stage: end -------------------------------- #
     bot.make_end_stage(
         stage_id=STAGE_END,
         goodbye_message="You have exited the conversation. \n\nUse /start to begin a new one.",
     )
-    bot.set_first_stage(STAGE_END)
     # ---------------------------------------------------------------------------- #
 
     # Start Bot
