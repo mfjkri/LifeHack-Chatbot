@@ -112,4 +112,4 @@
     $ python main.py
     ```
 
-    You may need to activate `venv` if you have set it up in the earlier steps..
+    You may need to activate `venv` if you have set it up in the earlier steps.
