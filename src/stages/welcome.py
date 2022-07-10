@@ -43,24 +43,14 @@ class WelcomeStage(Stage):
         return super().init_users_data()
 
     def stage_entry(self, update: Update, context: CallbackContext) -> USERSTATE:
-        return self.clear_job(update, context)
-
-    def stage_exit(self, update: Update, context: CallbackContext) -> USERSTATE:
-        return super().stage_exit(update, context)
-
-    def clear_job(self, update: Update, context: CallbackContext) -> USERSTATE:
-        user: User = context.user_data.get("user")
-
-        current_job_queue: JobQueue = context.job_queue
-        current_jobs = current_job_queue.get_jobs_by_name(user.chatid)
-        for job in current_jobs:
-            job.schedule_removal()
-
         return self.bot.proceed_next_stage(
             current_stage_id=self.stage_id,
             next_stage_id=self.WELCOME_DISCLAIMER_STAGE.stage_id,
             update=update, context=context
         )
+
+    def stage_exit(self, update: Update, context: CallbackContext) -> USERSTATE:
+        return super().stage_exit(update, context)
 
     def accept_disclaimer(self, update: Update, context: CallbackContext) -> USERSTATE:
         query: CallbackQuery = update.callback_query
@@ -69,14 +59,16 @@ class WelcomeStage(Stage):
         self.bot.edit_or_reply_message(
             update, context,
             "You have activated the bot.\n\n"
-            "Use /start again to stop the bot."
+            "Use /stop to stop the bot.\n"
+            "Use /start again to modify your interval."
         )
 
         user: User = context.user_data.get("user")
+        interval = user.data.get("Reminder Interval", self.interval)
 
         context.job_queue.run_repeating(
             callback=self.do_me_interval,
-            interval=self.interval,
+            interval=interval * 60 * 60,
             context=user.chatid,
             name=str(user.chatid))
 

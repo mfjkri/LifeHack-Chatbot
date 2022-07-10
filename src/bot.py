@@ -559,6 +559,25 @@ class Bot(object):
         assert first_stage, f"{stage_id} is not a valid/registered stage of bot"
         self.first_stage: Stage = first_stage
 
+    def stop_jobs(self, update: Update, context: CallbackContext, silent_stop: Optional[bool] = False) -> USERSTATE:
+        user: User = context.user_data.get("user")
+
+        if user:
+            current_job_queue = context.job_queue
+            current_jobs = current_job_queue.get_jobs_by_name(user.chatid)
+            for job in current_jobs:
+                job.schedule_removal()
+
+            if not silent_stop:
+                self.edit_or_reply_message(
+                    update, context,
+                    "You have stopped the bot.\n\n"
+                    "Use /start to start the bot again.",
+                    reply_message=True
+                )
+
+        return self.end_stage.stage_id
+
     def conversation_entry(self, update: Update, context: CallbackContext) -> USERSTATE:
         if update.message and update.message.text:
             chatid = str(update.message.chat_id)
@@ -567,6 +586,9 @@ class Bot(object):
             user: User = cached_user or self.user_manager.new(chatid)
 
             if user:
+
+                self.stop_jobs(update, context, silent_stop=True)
+
                 context.user_data.clear()
                 context.user_data.update({"user": user})
 
@@ -642,7 +664,13 @@ class Bot(object):
             "start", self.conversation_entry)
         self.dispatcher.add_handler(
             ConversationHandler(
-                entry_points=[start_command],
+                entry_points=[
+                    start_command,
+                    CommandHandler(
+                        "stop",
+                        self.stop_jobs
+                    )
+                ],
                 states=conversation_states,
                 fallbacks=[start_command],
                 per_message=False,

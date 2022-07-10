@@ -6,6 +6,7 @@ sys.path.append("src")
 import logging
 import os
 import shutil
+from typing import Union
 
 from bot import Bot
 from user import UserManager
@@ -49,8 +50,33 @@ def main():
              config=CONFIG)
 
     # Bot flow:
+    STAGE_COLLECT_INTERVAL = "info_interval"
     STAGE_WELCOME = "welcome"
     STAGE_END = "end"
+
+    # --------------------------- Stage: info_interval --------------------------- #
+    def check_if_number(input_str: Union[str, bool]) -> Union[str, bool]:
+        if input_str is True:
+            return "any valid number"
+        else:
+            try:
+                input_str = float(input_str)
+            except:
+                input_str = False
+
+            return input_str
+
+    bot.get_user_info(
+        stage_id=STAGE_COLLECT_INTERVAL,
+        next_stage_id=STAGE_WELCOME,
+        data_label="Reminder Interval",
+        input_formatter=check_if_number,
+        additional_text="This is the interval of time between reminders sent by the bot.\nInterval is in <b>hours</b>.",
+        use_last_saved=True,
+        allow_update=True
+    )
+    bot.set_first_stage(STAGE_COLLECT_INTERVAL)
+    # ---------------------------------------------------------------------------- #
 
     # ------------------------------ Stage: welcome ------------------------------ #
     welcome_stage: WelcomeStage = WelcomeStage(
@@ -59,9 +85,8 @@ def main():
         bot=bot
     )
     welcome_stage.setup(
-        interval=5
+        interval=6
     )
-    bot.set_first_stage(STAGE_WELCOME)
     # ---------------------------------------------------------------------------- #
 
     # -------------------------------- Stage: end -------------------------------- #

@@ -2,17 +2,49 @@
 
 1. Find the bot on Telegram.
 
-   Bot handle: [zerowastesgbot](t.me/zerowastesgbot)
+   Bot handle: [@zerowastesgbot](t.me/zerowastesgbot)
 
-2. Press `\start`.
+2. Press `/start`.
 
-   If the `\start` button is not available for you, you can type it out too.
+   If the `/start` button is not available for you, you can use it as a command (sending it as a message).
 
-3. Select the option `Yes` when prompted.
+3. Enter a suitable interval.
 
-   The bot will require you verification to start.
+   When prompted for an interval, enter a suitable number.
 
-4. Use `\start` again if you wish to stop the bot.
+   For demonstration purposes, we recommended setting it a very small number like `0.001`.
+
+   ![interval-input](docs/img/interval_input.png)
+
+   Note: Interval here is in hours (0.001 hours = 0.001 \* 3600 = `3.6 seconds`).
+
+4. Confirm the suitable interval.
+
+   The bot will allow you to modify your input in the event of a mistake.
+
+   It will also check that your input is a valid input (`valid number` in this case).
+
+   Once you are satisfied with your interval, press Confirm to proceed.
+
+   ![input-confirmation](docs/img/input_confirmation.png)
+
+5. Start the bot.
+
+   You will be presented with a choice whether to start the bot or not.
+
+   Press `Yes` to begin the reminders.
+
+   ![start-bot](docs/img/start_confirmation.png)
+
+6. Use `/stop` to stop the bot.
+
+   ![stop-bot](docs/img//bot_stopped.png)
+
+7. Use `/start` again if you wish to modify your interval.
+
+   Note that this will stop the bot similar to `/stop`.
+
+   ![bot-started](docs/img/bot_started.png)
 
 <br/>
 
