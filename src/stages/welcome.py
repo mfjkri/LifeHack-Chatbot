@@ -83,7 +83,7 @@ class WelcomeStage(Stage):
             context=user.chatid,
             name=str(user.chatid))
 
-        return -1
+        return self.bot.end_stage.stage_id
         # return self.stage_exit(update, context)
 
     def decline_disclaimer(self, update: Update, context: CallbackContext) -> USERSTATE:

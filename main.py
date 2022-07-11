@@ -6,10 +6,14 @@ sys.path.append("src")
 import logging
 import os
 import shutil
-from typing import Union
+from typing import (Union, Optional, Tuple)
 
+from telegram import Update
+from telegram.ext import (CallbackContext, JobQueue, Job)
+
+from constants import USERSTATE
 from bot import Bot
-from user import UserManager
+from user import (UserManager, User)
 from utils import utils
 from utils.log import Log
 from stages.welcome import WelcomeStage
@@ -93,6 +97,51 @@ def main():
     bot.make_end_stage(
         stage_id=STAGE_END,
         goodbye_message="You have exited the conversation. \n\nUse /start to begin a new one.",
+    )
+    # ---------------------------------------------------------------------------- #
+
+    # ------------------------------- Command: stop ------------------------------ #
+    def stop_current_job(update: Update,
+                         context: CallbackContext,
+                         silent_stop: Optional[bool] = False) -> USERSTATE:
+        user: User = context.user_data.get("user")
+
+        if user:
+            current_job_queue: JobQueue = context.job_queue
+            current_jobs: Tuple[Job, ...] = current_job_queue.get_jobs_by_name(
+                user.chatid)
+
+            for job in current_jobs:
+                job: Job
+                job.schedule_removal()
+
+            if not silent_stop:
+                bot.edit_or_reply_message(
+                    update, context,
+                    "You have stopped the bot.\n\n"
+                    "Use /start to start the bot again.",
+                    reply_message=True
+                )
+
+        return bot.end_stage.stage_id
+
+    bot.add_command_handler(
+        command="stop",
+        callback=stop_current_job,
+        override_handler=True
+    )
+    # ---------------------------------------------------------------------------- #
+
+    # ------------------------------ Command: start ------------------------------ #
+    def start_overide(update: Update, context: CallbackContext) -> USERSTATE:
+        stop_current_job(update, context, silent_stop=True)
+        return bot.conversation_entry(update, context)
+
+    bot.add_command_handler(
+        command="start",
+        callback=start_overide,
+        add_as_fallback=True,
+        override_handler=True
     )
     # ---------------------------------------------------------------------------- #
 

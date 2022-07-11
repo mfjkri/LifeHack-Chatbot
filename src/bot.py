@@ -559,25 +559,6 @@ class Bot(object):
         assert first_stage, f"{stage_id} is not a valid/registered stage of bot"
         self.first_stage: Stage = first_stage
 
-    def stop_jobs(self, update: Update, context: CallbackContext, silent_stop: Optional[bool] = False) -> USERSTATE:
-        user: User = context.user_data.get("user")
-
-        if user:
-            current_job_queue = context.job_queue
-            current_jobs = current_job_queue.get_jobs_by_name(user.chatid)
-            for job in current_jobs:
-                job.schedule_removal()
-
-            if not silent_stop:
-                self.edit_or_reply_message(
-                    update, context,
-                    "You have stopped the bot.\n\n"
-                    "Use /start to start the bot again.",
-                    reply_message=True
-                )
-
-        return self.end_stage.stage_id
-
     def conversation_entry(self, update: Update, context: CallbackContext) -> USERSTATE:
         if update.message and update.message.text:
             chatid = str(update.message.chat_id)
@@ -586,9 +567,6 @@ class Bot(object):
             user: User = cached_user or self.user_manager.new(chatid)
 
             if user:
-
-                self.stop_jobs(update, context, silent_stop=True)
-
                 context.user_data.clear()
                 context.user_data.update({"user": user})
 
@@ -607,6 +585,63 @@ class Bot(object):
         else:
             self.logger.error("USER_MESSAGE_INVALID",
                               f"Unknown user has entered a message with no valid update")
+
+    def add_command_handler(self, command: str,
+                            callback: Callable[[Update, CallbackContext], USERSTATE],
+                            add_as_fallback: Optional[bool] = False,
+                            override_handler: Optional[bool] = False) -> None:
+        """
+        Adds a CommandHandler as an entry point to the bot.
+
+        Parameters:
+            command (:obj:`str`): The command trigger: `\command`. 
+            callback (:class:`Callable`): The callback function called when command is triggered.
+                Callback signature:
+                    ``def callback(update: Update, context: CallbackContext) -> USERSTATE``
+
+            add_as_fallback (:obj:`bool`): Optional. Whether to add the CommandHandler as a fallback handler too.
+            override_handler (:obj:`bool`): Optional. Whether to override any CommandHandlers already created (will raise an \
+                error if this not set to `True` and there is an existing CommandHandler with the same command).
+
+        Notes:
+            `override_handler` parameter is useful for override CommandHandlers already set by the bot for example \
+                the start CommandHandler: `\start`.
+
+            The user: `User` property of `CallbackContext.user_data` is NOT GUARANTEED!
+
+        Returns:
+            (:obj:`None`)
+
+        Example:
+            >>> def terminate_conversation(update: Update, context: CallbackContext) -> USERSTATE:
+                    # ...
+                    return bot.end_stage.stage_id
+
+            >>> bot.add_command_handler(
+                    command="stop",
+                    callback=terminate_conversation,
+                    override_handler=True
+                )
+        """
+        assert (command not in self.command_handlers or (
+            command in self.command_handlers and override_handler
+        )), f"An identical handler already exists for the command: /{command}."\
+            f"""
+            
+            If you intended to override the previous handler, please set override_handler as True.
+            
+            Else please use a different command.
+            """
+
+        new_command_handler: CommandHandler = CommandHandler(
+            command=command,
+            callback=callback
+        )
+
+        self.command_handlers.update({command: new_command_handler})
+
+        if add_as_fallback:
+            self.fallback_handlers.update({command: new_command_handler})
 
     def start(self, live_mode: Optional[bool] = False) -> None:
         """
@@ -660,19 +695,11 @@ class Bot(object):
         for idx, state in enumerate(self.states):
             conversation_states.update({idx: state["callbacks"]})
 
-        start_command = CommandHandler(
-            "start", self.conversation_entry)
         self.dispatcher.add_handler(
             ConversationHandler(
-                entry_points=[
-                    start_command,
-                    CommandHandler(
-                        "stop",
-                        self.stop_jobs
-                    )
-                ],
+                entry_points=list(self.command_handlers.values()),
                 states=conversation_states,
-                fallbacks=[start_command],
+                fallbacks=list(self.fallback_handlers.values()),
                 per_message=False,
                 allow_reentry=True,
                 run_async=True
@@ -728,8 +755,23 @@ class Bot(object):
         self.first_stage: Stage = None
         self.end_stage: EndConversation = None
 
+        self.command_handlers: Dict[str, CommandHandler] = {}
+        self.fallback_handlers: Dict[str, CommandHandler] = {}
+
         self.updater = updater
         self.dispatcher = dispatcher
+
+        self.add_command_handler(
+            command="start",
+            callback=self.conversation_entry,
+            add_as_fallback=True
+        )
+
+        self.add_command_handler(
+            command="stop",
+            callback=lambda update, context: self.exit_conversation(
+                "-", update, context)
+        )
 
         self.user_manager = UserManager()
 
